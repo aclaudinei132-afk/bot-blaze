@@ -5,101 +5,101 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- CONFIGURAÇÃO DO SERVIDOR WEB (OBRIGATÓRIO PARA RAILWAY) ---
+# --- SERVIDOR WEB ---
 app = Flask('')
-
 @app.route('/')
-def home():
-    return "✅ Bot MBDM Online e Monitorando!"
+def home(): return "✅ Bot MBDM com Espera Automática Online!"
 
 def run():
-    # O Railway usa a variável de ambiente PORT
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- CONFIGURAÇÕES DO BOT ---
+# --- CONFIGURAÇÕES ---
 TOKEN = "8771599592:AAGjxQix5fplVmQjUIpTKey2HxQ5MRAEVWs"
 CHAT_ID = "7347118736"
-
 bot = telebot.TeleBot(TOKEN)
-ultimo_id_processado = None
+
+# --- VARIÁVEIS DE CONTROLE ---
+ultimo_id = None
+aguardando_casas = 0  # Contador de pulos
+cor_pendente = None   # Qual cor entrar após a espera
+sinal_ativo = None    # Cor que estamos monitorando o Green
+tentativa_gale = False
+placar_green = 0
+placar_red = 0
 
 def monitorar():
-    global ultimo_id_processado
-    print("🚀 MONITORAMENTO BLAZE ATIVADO!")
+    global ultimo_id, aguardando_casas, cor_pendente, sinal_ativo, tentativa_gale, placar_green, placar_red
+    print("📡 Monitoramento Inteligente Iniciado...")
     
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    }
-    
-    # API de resultados reais (Double)
-    URL_API = "https://blaze1.space"
+    URL_API = "https://blaze.com"
 
     while True:
         try:
-            # Puxa os dados da API
-            response = requests.get(URL_API, headers=headers, timeout=10)
-            
+            response = requests.get(URL_API, timeout=10)
             if response.status_code == 200:
                 dados = response.json()
-                
                 if dados and len(dados) > 0:
-                    # Pega o giro mais recente (índice 0)
-                    giro_atual = dados[0] 
-                    id_giro = giro_atual['id']
-                    
-                    # Só processa se for um giro NOVO
-                    if id_giro != ultimo_id_processado:
-                        num = int(giro_atual['roll']) # Campo 'roll' é o número sorteado
-                        ultimo_id_processado = id_giro
-                        print(f"🎰 Novo número: {num}")
+                    giro = dados[0]
+                    id_giro = giro['id']
+                    num = int(giro['roll'])
+                    cor_res = int(giro['color']) # 1=Verm, 2=Preto, 0=Branco
 
-                        msg = ""
+                    if id_giro != ultimo_id:
+                        ultimo_id = id_giro
+                        print(f"🎰 Giro: {num} | Cor: {cor_res}")
 
-                        # --- LÓGICA DE PADRÕES ---
+                        # 1. VERIFICA GREEN/RED DO SINAL ATIVO
+                        if sinal_ativo:
+                            if cor_res == sinal_ativo or cor_res == 0:
+                                win_tipo = "DIRETO" if not tentativa_gale else "G1"
+                                placar_green += 1
+                                bot.send_message(CHAT_ID, f"✅ **GREEN {win_tipo}!**\n📊 Placar: {placar_green}W - {placar_red}L", parse_mode="Markdown")
+                                sinal_ativo = None
+                                tentativa_gale = False
+                            elif not tentativa_gale:
+                                tentativa_gale = True
+                                bot.send_message(CHAT_ID, "🔄 **ENTRADA G1!**\nRepetir cor + Branco", parse_mode="Markdown")
+                            else:
+                                placar_red += 1
+                                bot.send_message(CHAT_ID, f"❌ **RED!**\n📊 Placar: {placar_green}W - {placar_red}L", parse_mode="Markdown")
+                                sinal_ativo = None
+                                tentativa_gale = False
+
+                        # 2. LOGICA DE ESPERA (PARA 11, 8 E 1)
+                        if aguardando_casas > 0:
+                            aguardando_casas -= 1
+                            if aguardando_casas == 0:
+                                cor_nome = "PRETO ⚫" if cor_pendente == 2 else "VERMELHO 🔴"
+                                bot.send_message(CHAT_ID, f"🚨 **ENTRE AGORA: {cor_nome}**\n⚪ Proteção no Branco\n🔄 Até G1", parse_mode="Markdown")
+                                sinal_ativo = cor_pendente
+                                cor_pendente = None
+                            else:
+                                print(f"⏳ Aguardando... faltam {aguardando_casas} casas.")
+
+                        # 3. NOVOS PADRÕES
+                        # ENTRADA IMEDIATA (10 ou 12)
+                        if num in [10, 12]:
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n🚨 **ENTRADA: PRETO ⚫**\n⚪ Proteção Branco", parse_mode="Markdown")
+                            sinal_ativo = 2
                         
-                        # PADRÃO 10 ou 12 (Entrada Imediata)
-                        if num == 10 or num == 12:
-                            msg = (f"🎰 Número: *{num}*\n"
-                                   f"🚨 *PADRÃO DETECTADO (10/12)!*\n\n"
-                                   f"🎯 Entrada: *PRETO ⚫*\n"
-                                   f"⚪ Proteção no Branco\n"
-                                   f"🔄 Até G1")
-
-                        # PADRÃO 11 ou 8 (Atenção)
-                        elif num == 11 or num == 8:
-                            msg = (f"🎰 Número: *{num}*\n"
-                                   f"⚠️ *ATENÇÃO (11/8)!*\n\n"
-                                   f"⏳ Aguarde 2 casas...\n"
-                                   f"🎯 Depois entre no *PRETO ⚫* + ⚪ Branco")
-
-                        # PADRÃO 1 (Atenção Vermelho)
+                        # ESPERA DE 2 CASAS (11, 8 ou 1)
+                        elif num in [11, 8]:
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n⚠️ **PADRÃO DETECTADO!**\n⏳ Aguardando 2 casas para entrar no **PRETO ⚫**", parse_mode="Markdown")
+                            aguardando_casas = 2
+                            cor_pendente = 2
+                        
                         elif num == 1:
-                            msg = (f"🎰 Número: *{num}*\n"
-                                   f"⚠️ *ATENÇÃO (NÚMERO 1)!*\n\n"
-                                   f"⏳ Aguarde 2 casas...\n"
-                                   f"🎯 Depois entre no *VERMELHO 🔴* + ⚪ Branco")
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n⚠️ **PADRÃO DETECTADO!**\n⏳ Aguardando 2 casas para entrar no **VERMELHO 🔴**", parse_mode="Markdown")
+                            aguardando_casas = 2
+                            cor_pendente = 1
 
-                        if msg:
-                            bot.send_message(CHAT_ID, msg, parse_mode="Markdown")
-            
-            # Checa a cada 3 segundos
             time.sleep(3)
-
         except Exception as e:
-            print(f"⚠️ Erro na conexão: {e}")
+            print(f"Erro: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
-    # Inicia o servidor Flask em paralelo
-    t = Thread(target=run)
-    t.daemon = True
-    t.start()
-    
-    # Mensagem de ativação no Telegram
-    try:
-        bot.send_message(CHAT_ID, "✅ **BOT MBDM CONECTADO!**\nMonitorando números: 10, 12, 11, 8 e 1.")
-    except Exception as e:
-        print(f"Erro ao enviar sinal inicial: {e}")
-        
+    Thread(target=run, daemon=True).start()
+    bot.send_message(CHAT_ID, "🚀 **BOT MBDM V3 ATIVADO!**\nContagem de espera e placar automáticos.")
     monitorar()
