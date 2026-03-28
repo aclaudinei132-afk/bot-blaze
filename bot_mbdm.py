@@ -7,7 +7,7 @@ from threading import Thread
 
 app = Flask('')
 @app.route('/')
-def home(): return "✅ Bot MBDM v8 Online!"
+def home(): return "✅ Bot MBDM v9 Online!"
 
 def run():
     port = int(os.environ.get("PORT", 8080))
@@ -27,26 +27,30 @@ placar_red = 0
 
 def monitorar():
     global ultimo_id, aguardando_casas, cor_pendente, sinal_ativo, tentativa_gale, placar_green, placar_red
-    print("📡 Monitorando via Rota Blindada...")
+    print("📡 Monitorando via Rota de Camuflagem...")
     
-    # URL da API espelho (mais resistente a bloqueios)
-    URL_API = "https://api-double.blaze.bet"
+    URL_API = "https://blaze.com"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Referer": "https://blaze.com"
+    }
 
     while True:
         try:
-            response = requests.get(URL_API, timeout=15)
+            response = requests.get(URL_API, headers=headers, timeout=15)
             if response.status_code == 200:
-                giro = response.json()
-                if giro:
+                dados = response.json()
+                if dados and len(dados) > 0:
+                    giro = dados[0] 
                     id_giro = giro.get('id')
-                    num = int(giro.get('value')) # Campo 'value'
-                    cor_res = int(giro.get('color')) # 1=V, 2=P, 0=B
+                    num = int(giro.get('roll'))
+                    cor_res = int(giro.get('color')) 
 
                     if id_giro != ultimo_id:
                         ultimo_id = id_giro
-                        print(f"🎰 Giro: {num} (Cor: {cor_res})")
+                        print(f"🎰 Giro Detectado: {num} (Cor: {cor_res})")
 
-                        # 1. VERIFICA GREEN/RED
                         if sinal_ativo:
                             if cor_res == sinal_ativo or cor_res == 0:
                                 win_tipo = "DIRETO" if not tentativa_gale else "G1"
@@ -63,7 +67,6 @@ def monitorar():
                                 sinal_ativo = None
                                 tentativa_gale = False
 
-                        # 2. LOGICA DE ESPERA
                         if aguardando_casas > 0:
                             aguardando_casas -= 1
                             if aguardando_casas == 0:
@@ -72,7 +75,6 @@ def monitorar():
                                 sinal_ativo = cor_pendente
                                 cor_pendente = None
 
-                        # 3. GATILHOS
                         if num in [10, 12]:
                             bot.send_message(CHAT_ID, f"🎰 {num}\n🚨 **ENTRADA: PRETO ⚫**", parse_mode="Markdown")
                             sinal_ativo = 2
@@ -85,13 +87,13 @@ def monitorar():
                             aguardando_casas = 2
                             cor_pendente = 1
             
-            time.sleep(4)
+            time.sleep(3)
         except Exception as e:
             print(f"⚠️ Erro: {e}")
             time.sleep(10)
 
 if __name__ == "__main__":
     Thread(target=run, daemon=True).start()
-    try: bot.send_message(CHAT_ID, "🚀 **BOT V8 ATIVADO!**")
+    try: bot.send_message(CHAT_ID, "🚀 **BOT V9 ATIVADO!**")
     except: pass
     monitorar()
