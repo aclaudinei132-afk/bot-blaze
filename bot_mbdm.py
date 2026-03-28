@@ -17,6 +17,7 @@ def run():
 TOKEN = "8771599592:AAGjxQix5fplVmQjUIpTKey2HxQ5MRAEVWs"
 CHAT_ID = "7347118736"
 
+
 bot = telebot.TeleBot(TOKEN)
 ultimo_id_processado = None 
 
