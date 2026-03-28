@@ -58,9 +58,14 @@ def monitorar():
         except Exception as e:
             print(f"Erro: {e}")
             time.sleep(10)
-
 if __name__ == "__main__":
-    t = Thread(target=run)
+    # Abre a porta correta para o Render não desligar o bot
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    t = Thread(target=lambda: app.run(host='0.0.0.0', port=port))
+    t.daemon = True
     t.start()
+    
+    # Envia a mensagem e inicia o monitoramento
     bot.send_message(CHAT_ID, "✅ **Bot MBDM Iniciado com Sucesso!**")
     monitorar()
