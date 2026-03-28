@@ -24,7 +24,7 @@ ultimo_id_processado = None
 
 def pegar_giro():
     try:
-        url = "https://blaze.com/api/"
+        url = "https://blaze.com"
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=15)
         if r.status_code == 200:
