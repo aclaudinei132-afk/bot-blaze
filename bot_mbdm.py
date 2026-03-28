@@ -1,69 +1,50 @@
 import telebot
 import requests
-import time
 import os
+import time
 from flask import Flask
 from threading import Thread
 
-# --- CONFIGURAÇÃO DO SERVIDOR PARA O RENDER ---
+# --- SERVIDOR WEB ---
 app = Flask('')
 @app.route('/')
-def home(): return "Bot MBDM Online"
+def home(): return "Bot Online!"
 
 def run():
-    # Isso resolve o erro de "No open ports"
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- CONFIGURAÇÕES DO BOT ---
+# --- CONFIGURAÇÕES ---
 TOKEN = "8771599592:AAGjxQix5fplVmQjUIpTKey2HxQ5MRAEVWs"
 CHAT_ID = "7347118736"
 bot = telebot.TeleBot(TOKEN)
-ultimo_id_processado = None 
-
-def pegar_giro():
-    try:
-        # URL da API da Blaze corrigida
-        url = "https://blaze.com"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code == 200:
-            return r.json()
-        return None
-    except:
-        return None
 
 def monitorar():
-    global ultimo_id_processado
     print("🚀 MONITORAMENTO ATIVADO!")
+    ultimo_id = None
     while True:
         try:
-            dados = pegar_giro()
-            # Pega o primeiro item da lista de resultados
-            if dados and len(dados) > 0:
-                giro = dados[0]
-                if giro.get('id') != ultimo_id_processado:
-                    num = int(giro['value'])
-                    ultimo_id_processado = giro['id']
+            # URL Direta da API
+            r = requests.get("https://blaze.com", timeout=10)
+            if r.status_code == 200:
+                dados = r.json()
+                if dados and dados[0]['id'] != ultimo_id:
+                    num = int(dados[0]['value'])
+                    ultimo_id = dados[0]['id']
+                    cor = "🔴 VERMELHO" if num <= 7 else "⚫ PRETO"
+                    if num == 0: cor = "⚪ BRANCO"
                     
-                    # Envia sinal simples para teste
-                    if num == 0:
-                        bot.send_message(CHAT_ID, "💎 **BRANCO (0)!**", parse_mode="Markdown")
-                    elif num <= 7:
-                        bot.send_message(CHAT_ID, f"🚨 **SINAL: VERMELHO 🔴** ({num})", parse_mode="Markdown")
-                    else:
-                        bot.send_message(CHAT_ID, f"🚨 **SINAL: PRETO ⚫** ({num})", parse_mode="Markdown")
-            
-            time.sleep(8)
+                    bot.send_message(CHAT_ID, f"🎲 **Blaze Giro:** {num}\n🎯 Cor: {cor}")
+            time.sleep(10)
         except Exception as e:
             print(f"Erro: {e}")
-            time.sleep(10)
+            time.sleep(15)
 
 if __name__ == "__main__":
-    # Inicia o servidor e o bot
     Thread(target=run).start()
+    # MENSAGEM DE TESTE FORÇADA
     try:
-        bot.send_message(CHAT_ID, "✅ **Bot MBDM Iniciado com Sucesso!**")
-    except:
-        pass
+        bot.send_message(CHAT_ID, "✅ **BOT CONECTADO COM SUCESSO!**")
+    except Exception as e:
+        print(f"ERRO TELEGRAM: {e}")
     monitorar()
