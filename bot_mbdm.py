@@ -5,10 +5,10 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- SERVIDOR PARA MANTER ONLINE ---
+# --- SERVIDOR WEB ---
 app = Flask('')
 @app.route('/')
-def home(): return "✅ Bot MBDM v6 Rodando!"
+def home(): return "✅ Bot MBDM v7 - API TipMiner Online!"
 
 def run():
     port = int(os.environ.get("PORT", 8080))
@@ -30,28 +30,29 @@ placar_red = 0
 
 def monitorar():
     global ultimo_id, aguardando_casas, cor_pendente, sinal_ativo, tentativa_gale, placar_green, placar_red
-    print("📡 Iniciando Monitoramento Blindado...")
+    print("📡 Monitorando via API TipMiner...")
     
-    # URL de uma API reserva que não bloqueia o Railway
-    URL_API = "https://api.tipmanager.net"
+    # URL da API do TipMiner (Pública e Rápida)
+    URL_API = "https://api.tipminer.com"
 
     while True:
         try:
-            # Tenta puxar os dados
-            response = requests.get(URL_API, timeout=20)
+            # Headers para evitar bloqueio
+            headers = {"User-Agent": "Mozilla/5.0"}
+            response = requests.get(URL_API, headers=headers, timeout=15)
             
             if response.status_code == 200:
                 dados = response.json()
+                # O TipMiner retorna uma lista de giros
                 if dados and len(dados) > 0:
-                    # Pega o giro mais recente
-                    giro = dados[0] 
+                    giro = dados[0] # Pega o mais recente
                     id_giro = giro.get('id')
-                    num = int(giro.get('value')) # Campo nesta API é 'value'
-                    cor_res = int(giro.get('color_id')) # 1=V, 2=P, 0=B
+                    num = int(giro.get('value')) # Campo 'value'
+                    cor_res = int(giro.get('color')) # 1=V, 2=P, 0=B
 
                     if id_giro != ultimo_id:
                         ultimo_id = id_giro
-                        print(f"🎰 Novo Giro: {num} (Cor: {cor_res})")
+                        print(f"🎰 Giro TipMiner: {num} (Cor: {cor_res})")
 
                         # 1. VERIFICA GREEN/RED
                         if sinal_ativo:
@@ -63,14 +64,14 @@ def monitorar():
                                 tentativa_gale = False
                             elif not tentativa_gale:
                                 tentativa_gale = True
-                                bot.send_message(CHAT_ID, "🔄 **VAMOS PRO G1!**\nMesma cor + Branco", parse_mode="Markdown")
+                                bot.send_message(CHAT_ID, "🔄 **VAMOS PRO G1!**\nRepetir cor + Branco", parse_mode="Markdown")
                             else:
                                 placar_red += 1
                                 bot.send_message(CHAT_ID, f"❌ **RED!**\n📊 {placar_green}W - {placar_red}L", parse_mode="Markdown")
                                 sinal_ativo = None
                                 tentativa_gale = False
 
-                        # 2. LÓGICA DE ESPERA (2 CASAS)
+                        # 2. LOGICA DE ESPERA (2 CASAS)
                         if aguardando_casas > 0:
                             aguardando_casas -= 1
                             if aguardando_casas == 0:
@@ -78,8 +79,6 @@ def monitorar():
                                 bot.send_message(CHAT_ID, f"🚨 **ENTRE AGORA: {cor_nome}**\n⚪ Proteção Branco\n🔄 Até G1", parse_mode="Markdown")
                                 sinal_ativo = cor_pendente
                                 cor_pendente = None
-                            else:
-                                print(f"⏳ Aguardando... faltam {aguardando_casas} casas.")
 
                         # 3. GATILHOS (10, 12, 11, 8, 1)
                         if num in [10, 12]:
@@ -96,15 +95,14 @@ def monitorar():
                             aguardando_casas = 2
                             cor_pendente = 1
             
-            time.sleep(5) # Espera 5 segundos para a próxima checagem
+            time.sleep(3) # Checa a cada 3 segundos
 
         except Exception as e:
-            print(f"⚠️ Erro nos logs: {e}")
+            print(f"⚠️ Erro de API: {e}")
             time.sleep(10)
 
 if __name__ == "__main__":
     Thread(target=run, daemon=True).start()
-    try:
-        bot.send_message(CHAT_ID, "🚀 **BOT V6 (FINAL) ATIVADO!**\nMonitorando agora via API Secundária.")
+    try: bot.send_message(CHAT_ID, "🚀 **BOT V7 (TIPMINER) ATIVADO!**")
     except: pass
     monitorar()
