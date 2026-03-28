@@ -24,7 +24,7 @@ ultimo_id_processado = None
 
 def pegar_giro():
     try:
-        url = "https://blaze.com"
+url = "https://blaze.com"
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=15)
         if r.status_code == 200:
@@ -58,14 +58,12 @@ def monitorar():
         except Exception as e:
             print(f"Erro: {e}")
             time.sleep(10)
-if __name__ == "__main__":
-    # Abre a porta correta para o Render não desligar o bot
+  if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
-    t = Thread(target=lambda: app.run(host='0.0.0.0', port=port))
+    t = Thread(target=lambda: app.run(host="0.0.0.0", port=port))
     t.daemon = True
     t.start()
-    
-    # Envia a mensagem e inicia o monitoramento
     bot.send_message(CHAT_ID, "✅ **Bot MBDM Iniciado com Sucesso!**")
     monitorar()
+  
