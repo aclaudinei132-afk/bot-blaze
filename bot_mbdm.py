@@ -24,27 +24,38 @@ def monitorar():
     ultimo_id = None
     while True:
         try:
-            # URL Direta da API
-            r = requests.get("https://blaze.com", timeout=10)
+            # URL DA API CORRIGIDA (O SEGREDO)
+            url = "https://blaze.com"
+            r = requests.get(url, timeout=10)
+            
             if r.status_code == 200:
                 dados = r.json()
-                if dados and dados[0]['id'] != ultimo_id:
-                    num = int(dados[0]['value'])
-                    ultimo_id = dados[0]['id']
-                    cor = "🔴 VERMELHO" if num <= 7 else "⚫ PRETO"
-                    if num == 0: cor = "⚪ BRANCO"
+                # O [0] garante que pegamos o giro mais atual da lista
+                giro_atual = dados[0]
+                
+                if giro_atual['id'] != ultimo_id:
+                    num = int(giro_atual['value'])
+                    ultimo_id = giro_atual['id']
                     
-                    bot.send_message(CHAT_ID, f"🎲 **Blaze Giro:** {num}\n🎯 Cor: {cor}")
+                    # Define a cor do sinal
+                    cor_emoji = "🔴 VERMELHO" if num <= 7 else "⚫ PRETO"
+                    if num == 0: cor_emoji = "⚪ BRANCO"
+                    
+                    # Envia a mensagem para o Telegram
+                    msg = f"🎲 **Novo Giro Blaze!**\n\n🎯 Número: **{num}**\n🎨 Cor: **{cor_emoji}**"
+                    bot.send_message(CHAT_ID, msg, parse_mode="Markdown")
+                    print(f"Sinal enviado: {num} - {cor_emoji}")
+
             time.sleep(10)
         except Exception as e:
-            print(f"Erro: {e}")
+            print(f"Erro no monitoramento: {e}")
             time.sleep(15)
 
 if __name__ == "__main__":
     Thread(target=run).start()
-    # MENSAGEM DE TESTE FORÇADA
+    # MENSAGEM DE TESTE
     try:
-        bot.send_message(CHAT_ID, "✅ **BOT CONECTADO COM SUCESSO!**")
-    except Exception as e:
-        print(f"ERRO TELEGRAM: {e}")
+        bot.send_message(CHAT_ID, "✅ **BOT CONECTADO E MONITORANDO A BLAZE!**")
+    except:
+        pass
     monitorar()
