@@ -7,12 +7,13 @@ from threading import Thread
 
 app = Flask('')
 @app.route('/')
-def home(): return "✅ Bot MBDM v9 Online!"
+def home(): return "✅ Bot MBDM v10 - Ativo!"
 
 def run():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
+# --- CONFIGURAÇÕES ---
 TOKEN = "8771599592:AAGjxQix5fplVmQjUIpTKey2HxQ5MRAEVWs"
 CHAT_ID = "7347118736"
 bot = telebot.TeleBot(TOKEN)
@@ -27,30 +28,27 @@ placar_red = 0
 
 def monitorar():
     global ultimo_id, aguardando_casas, cor_pendente, sinal_ativo, tentativa_gale, placar_green, placar_red
-    print("📡 Monitorando via Rota de Camuflagem...")
+    print("📡 Monitorando via API Espelho (v10)...")
     
-    URL_API = "https://blaze.com"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Referer": "https://blaze.com"
-    }
+    # URL de API que não bloqueia o Railway
+    URL_API = "https://api.tipmanager.net"
 
     while True:
         try:
-            response = requests.get(URL_API, headers=headers, timeout=15)
+            response = requests.get(URL_API, timeout=15)
             if response.status_code == 200:
                 dados = response.json()
                 if dados and len(dados) > 0:
-                    giro = dados[0] 
+                    giro = dados[0]
                     id_giro = giro.get('id')
-                    num = int(giro.get('roll'))
-                    cor_res = int(giro.get('color')) 
+                    num = int(giro.get('value'))
+                    cor_res = int(giro.get('color_id')) # 1=V, 2=P, 0=B
 
                     if id_giro != ultimo_id:
                         ultimo_id = id_giro
-                        print(f"🎰 Giro Detectado: {num} (Cor: {cor_res})")
+                        print(f"🎰 Giro: {num}")
 
+                        # 1. VERIFICA GREEN/RED
                         if sinal_ativo:
                             if cor_res == sinal_ativo or cor_res == 0:
                                 win_tipo = "DIRETO" if not tentativa_gale else "G1"
@@ -67,33 +65,40 @@ def monitorar():
                                 sinal_ativo = None
                                 tentativa_gale = False
 
+                        # 2. LOGICA DE ESPERA (2 CASAS)
                         if aguardando_casas > 0:
                             aguardando_casas -= 1
                             if aguardando_casas == 0:
                                 cor_nome = "PRETO ⚫" if cor_pendente == 2 else "VERMELHO 🔴"
-                                bot.send_message(CHAT_ID, f"🚨 **ENTRE AGORA: {cor_nome}**", parse_mode="Markdown")
+                                bot.send_message(CHAT_ID, f"🚨 **ENTRE AGORA: {cor_nome}**\n⚪ Proteção Branco", parse_mode="Markdown")
                                 sinal_ativo = cor_pendente
                                 cor_pendente = None
 
-                        if num in [10, 12]:
-                            bot.send_message(CHAT_ID, f"🎰 {num}\n🚨 **ENTRADA: PRETO ⚫**", parse_mode="Markdown")
+                        # 3. SEUS NÚMEROS ESPECÍFICOS
+                        # Imediato (10 ou 12)
+                        if num == 10 or num == 12:
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n🚨 **ENTRADA: PRETO ⚫**\n⚪ Proteção Branco", parse_mode="Markdown")
                             sinal_ativo = 2
-                        elif num in [11, 8]:
-                            bot.send_message(CHAT_ID, f"🎰 {num}\n⚠️ **AGUARDE 2 CASAS (P)...**", parse_mode="Markdown")
+                        
+                        # Espera 2 casas (11 ou 8) -> Vai pro PRETO
+                        elif num == 11 or num == 8:
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n⚠️ **PADRÃO! Aguarde 2 casas...**\n🎯 Alvo: PRETO ⚫", parse_mode="Markdown")
                             aguardando_casas = 2
                             cor_pendente = 2
+                        
+                        # Espera 2 casas (1) -> Vai pro VERMELHO
                         elif num == 1:
-                            bot.send_message(CHAT_ID, f"🎰 {num}\n⚠️ **AGUARDE 2 CASAS (V)...**", parse_mode="Markdown")
+                            bot.send_message(CHAT_ID, f"🎰 Número: {num}\n⚠️ **PADRÃO! Aguarde 2 casas...**\n🎯 Alvo: VERMELHO 🔴", parse_mode="Markdown")
                             aguardando_casas = 2
                             cor_pendente = 1
             
-            time.sleep(3)
+            time.sleep(5)
         except Exception as e:
             print(f"⚠️ Erro: {e}")
             time.sleep(10)
 
 if __name__ == "__main__":
     Thread(target=run, daemon=True).start()
-    try: bot.send_message(CHAT_ID, "🚀 **BOT V9 ATIVADO!**")
+    try: bot.send_message(CHAT_ID, "🚀 **BOT v10 ATIVADO!**\nNúmeros: 10, 12, 11, 8 e 1 configurados.")
     except: pass
     monitorar()
