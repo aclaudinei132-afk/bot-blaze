@@ -21,11 +21,11 @@ ultimo_id_processado = None
 
 def pegar_giro():
     try:
-        url = "https://blaze.com"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code == 200: return r.json()
-        return None
+          url = "https://blaze.com"
+          headers = {"User-Agent": "Mozilla/5.0"}
+          r = requests.get(url, headers=headers, timeout=15)
+          if r.status_code == 200: return r.json()
+          return None
     except: return None
 
 def monitorar():
